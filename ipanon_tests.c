@@ -30,12 +30,12 @@ Ensure(ipanon_tests, init_returns_ok_with_heap_allocation) {
 }
 
 Ensure(ipanon_tests, init_initializes_key) {
-  // Strategy: Set key to all zeros. The key should not be all zeros anymore
-  // after calling init. (Requires accessing private internals directly.)
+  // Strategy: set key to all zeros. The key should not be all zeros after
+  // calling init. (Requires accessing private internals directly.)
   //
   // Note: there is an extremely low (but non-zero) probability that the key
   // is still all zeros after initialization since that can occur by
-  // definition. Thus this check may fail but it is highly unlikely.
+  // randomization. Thus this check may fail but it is highly unlikely.
   ipanonymizer anonymizer;
   memset(anonymizer._key, 0, sizeof(anonymizer._key));
   ipanon_init(&anonymizer);
@@ -66,6 +66,8 @@ Ensure(ipanon_tests, deinit_returns_ok_on_nonnull) {
 }
 
 Ensure(ipanon_tests, deinit_zeros_key) {
+  // Strategy: the key should be all zeros after calling deinit.
+  // (Requires accessing private internals directly.)
   ipanonymizer anonymizer;
   ipanon_init(&anonymizer);
   anonymizer.deinit(&anonymizer);
