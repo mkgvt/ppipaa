@@ -22,7 +22,7 @@
 static ipanon_errno ipanon_deinit(ipanonymizer *anonymizer) {
   // Sanity check
   if (anonymizer == NULL) {
-    return IPANON_ERROR_DEINIT;
+    return IPANON_ERROR_NULL;
   }
 
   // Nothing really needed but clear the key for security.
@@ -41,7 +41,7 @@ static ipanon_errno ipanon_deinit(ipanonymizer *anonymizer) {
 ipanon_errno ipanon_init(ipanonymizer *anonymizer) {
   // Sanity check
   if (anonymizer == NULL) {
-    return IPANON_ERROR_INIT;
+    return IPANON_ERROR_NULL;
   }
 
   // Note: sodium_init is re-entrant

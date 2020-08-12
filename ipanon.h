@@ -14,6 +14,7 @@
 
 typedef enum {
   IPANON_OK,             // No error
+  IPANON_ERROR_NULL,     // Anonymizer is NULL
   IPANON_ERROR_INIT,     // Initialization failed
   IPANON_ERROR_DEINIT,   // Deinitialization failed
   IPANON_END_OF_ERRORS,  // sentinel indicating end of errors (must be last)
