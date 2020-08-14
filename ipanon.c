@@ -31,6 +31,7 @@ static ipanon_errno ipanon_deinit(ipanonymizer *anonymizer) {
   return IPANON_OK;
 }
 
+
 /*
 -- Initialize the anonymizer.
 --

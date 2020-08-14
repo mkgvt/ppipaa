@@ -1,6 +1,6 @@
+#include <assert.h>
 #include <cgreen/cgreen.h>
 #include <cgreen/mocks.h>
-
 
 #include "ipanon.h"
 
@@ -15,11 +15,13 @@ Ensure(ipanon_tests, init_returns_error_on_null) {
   assert_that(err, is_equal_to(IPANON_ERROR_NULL));
 }
 
+
 Ensure(ipanon_tests, init_returns_ok_with_stack_allocation) {
   ipanonymizer anonymizer;
   ipanon_errno err = ipanon_init(&anonymizer);
   assert_that(err, is_equal_to(IPANON_OK));
 }
+
 
 Ensure(ipanon_tests, init_returns_ok_with_heap_allocation) {
   ipanonymizer *anonymizer = malloc(sizeof(ipanonymizer));
@@ -28,6 +30,7 @@ Ensure(ipanon_tests, init_returns_ok_with_heap_allocation) {
   assert_that(err, is_equal_to(IPANON_OK));
   free(anonymizer);
 }
+
 
 Ensure(ipanon_tests, init_initializes_key) {
   // Strategy: set key to all zeros. The key should not be all zeros after
@@ -58,12 +61,14 @@ Ensure(ipanon_tests, deinit_returns_error_on_null) {
   assert_that(err, is_equal_to(IPANON_ERROR_NULL));
 }
 
+
 Ensure(ipanon_tests, deinit_returns_ok_on_nonnull) {
   ipanonymizer anonymizer;
   ipanon_init(&anonymizer);
   ipanon_errno err = anonymizer.deinit(&anonymizer);
   assert_that(err, is_equal_to(IPANON_OK));
 }
+
 
 Ensure(ipanon_tests, deinit_zeros_key) {
   // Strategy: the key should be all zeros after calling deinit.
