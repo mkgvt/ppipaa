@@ -25,7 +25,7 @@ Ensure(ipanon_tests, init_returns_ok_with_stack_allocation) {
 
 Ensure(ipanon_tests, init_returns_ok_with_heap_allocation) {
   ipanonymizer *anonymizer = malloc(sizeof(ipanonymizer));
-  assert_that(anonymizer, is_not_null);
+  assert(anonymizer != NULL);
   ipanon_errno err = ipanon_init(anonymizer);
   assert_that(err, is_equal_to(IPANON_OK));
   free(anonymizer);
@@ -41,7 +41,9 @@ Ensure(ipanon_tests, init_initializes_key) {
   // randomization. Thus this check may fail but it is highly unlikely.
   ipanonymizer anonymizer;
   memset(anonymizer._key, 0, sizeof(anonymizer._key));
-  ipanon_init(&anonymizer);
+  ipanon_errno err = ipanon_init(&anonymizer);
+  assert(err == IPANON_OK);
+
   int bytes = sizeof(anonymizer._key);
   int zeros = 0;
   for (int i = 0; i < bytes; ++i) {
@@ -56,16 +58,20 @@ Ensure(ipanon_tests, init_initializes_key) {
 
 Ensure(ipanon_tests, deinit_returns_error_on_null) {
   ipanonymizer anonymizer;
-  ipanon_init(&anonymizer);
-  ipanon_errno err = anonymizer.deinit(NULL);
+  ipanon_errno err = ipanon_init(&anonymizer);
+  assert(err == IPANON_OK);
+
+  err = anonymizer.deinit(NULL);
   assert_that(err, is_equal_to(IPANON_ERROR_NULL));
 }
 
 
 Ensure(ipanon_tests, deinit_returns_ok_on_nonnull) {
   ipanonymizer anonymizer;
-  ipanon_init(&anonymizer);
-  ipanon_errno err = anonymizer.deinit(&anonymizer);
+  ipanon_errno err = ipanon_init(&anonymizer);
+  assert(err == IPANON_OK);
+
+  err = anonymizer.deinit(&anonymizer);
   assert_that(err, is_equal_to(IPANON_OK));
 }
 
@@ -74,8 +80,12 @@ Ensure(ipanon_tests, deinit_zeros_key) {
   // Strategy: the key should be all zeros after calling deinit.
   // (Requires accessing private internals directly.)
   ipanonymizer anonymizer;
-  ipanon_init(&anonymizer);
-  anonymizer.deinit(&anonymizer);
+  ipanon_errno err = ipanon_init(&anonymizer);
+  assert(err == IPANON_OK);
+
+  err = anonymizer.deinit(&anonymizer);
+  assert(err == IPANON_OK);
+
   int bytes = sizeof(anonymizer._key);
   int zeros = 0;
   for (int i = 0; i < bytes; ++i) {
