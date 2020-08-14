@@ -1,5 +1,5 @@
 CC      = gcc
-CFLAGS  = -fPIC -I. -Wall
+CFLAGS  = -fPIC -I. -Wall -Wpedantic -Wextra
 
 LD      = gcc
 LDFLAGS = -shared -lcgreen -lsodium
