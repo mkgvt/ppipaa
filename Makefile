@@ -1,32 +1,64 @@
-CC      = gcc
+## Support uint128_t until official support becomes available.
+##
+## Copyright (C) 2020, Mark Gardner <mkg@vt.edu>.
+##
+## This file is part of uint128.
+##
+## uint128 is free software: you can redistribute it and/or modify it under the
+## terms of the GNU Lesser General Public License as published by the Free
+## Software Foundation, either version 3 of the License, or (at your option)
+## any later version.
+##
+## uint128 is distributed in the hope that it will be useful, but WITHOUT ANY
+## WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+## FOR A PARTICULAR PURPOSE. See the GNU Lesser General Public License for
+## more details.
+##
+## You should have received a copy of the GNU Lesser General Public License
+## along with uint128. If not, see <https://www.gnu.org/licenses/>.
+
+CC     ?= gcc
 CFLAGS  = -fPIC -I. -Wall -Wpedantic -Wextra
+LDFLAGS = -lcgreen -lsodium
+DFLAGS  = -MM -MF
 
-LD      = gcc
-LDFLAGS = -shared -lcgreen -lsodium
+SRC     = ipanon.c
+OBJ     = ${SRC:.c=.o}
+DEP     = ${SRC:.c=.d}
 
-RM     = rm -f
+TESTSRC = $(wildcard *_tests.c)
+TESTOBJ = ${TESTSRC:.c=.o}
+TESTDEP = ${TESTSRC:.c=.d}
+TESTLIB = ${TESTSRC:.c=.so}
 
-TESTS=$(patsubst %.c,%.so,$(wildcard *_tests.c))
+DOCSRC  = $(wildcard *.md)
+DOCHTML = ${MDSRC:.md=.html}
 
-.PHONY: all tests
-all: $(TESTS) tests
+.PHONY: all html tests
+all: html tests
 
-tests: $(TESTS)
-	@for test in $(TESTS) ; do \
-	  echo ; \
-	  echo cgreen-runner $${test} ; \
-	  cgreen-runner $${test} ; \
-        done
+tests: $(TESTLIB)
+	@for test in $(TESTLIB) ; do cgreen-runner $${test} ; done
 
-%_tests.so: %_tests.o ipanon.o
+%_tests.so: %_tests.o $(OBJ)
 	$(CC) -shared -o $@ $^ $(LDFLAGS)
 
-%.o: %.c
-	$(CC) $(CFLAGS) -c -o $@ $^
+%.o: %.c | %.d
+	$(CC) $(CFLAGS) -c $^
+
+%.d: %.c
+	$(CC) $(DFLAGS) $(patsubst %.c,%.d,$^) $^
+
+html: $(HTML)
+
+%.html: %.md
+	pandoc -o $@ $^
 
 .PHONY: clean distclean
 clean:
-	$(RM) *_tests.so *.o
+	rm -f $(OBJ) $(DEP) $(TESTDEP) $(TESTOBJ) $(TESTLIB) *.gch *.d $(HTML)
 
 distclean: clean
-	$(RM) *~
+	rm -f *~
+
+-include $(TESTDEP)
