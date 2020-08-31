@@ -78,7 +78,9 @@ struct ipanon_state {
                               char *key, int keylen);
 
   // Private internals: do not access them directly
-  unsigned char _key[crypto_generichash_KEYBYTES];
+  struct private {
+    unsigned char key[crypto_generichash_KEYBYTES];
+  } private;
 };
 
 

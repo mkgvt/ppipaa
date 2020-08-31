@@ -5,7 +5,8 @@
 #include "ipanon.h"
 
 // Length of externalized data
-#define CIPHERTEXT_LEN (crypto_generichash_KEYBYTES + crypto_secretbox_MACBYTES)
+#define CIPHERTEXT_LEN (crypto_generichash_KEYBYTES + \
+                        crypto_secretbox_MACBYTES)
 
 
 /*
@@ -16,8 +17,7 @@
 size_t ipanon_saved_state_size(void) {
   return crypto_pwhash_SALTBYTES +
          crypto_secretbox_NONCEBYTES +
-         crypto_generichash_KEYBYTES +
-         crypto_secretbox_MACBYTES;
+         CIPHERTEXT_LEN;
 }
 
 
@@ -41,7 +41,7 @@ static ipanon_errno ipanon_externalize_plaintext(ipanonymizer *anonymizer,
   }
 
   // Write out state.
-  int cnt = fwrite(anonymizer->_key, sizeof(anonymizer->_key), 1, out);
+  int cnt = fwrite(&anonymizer->private, sizeof(anonymizer->private), 1, out);
   if (cnt != 1) {
     return IPANON_ERROR_EXTERN;
   }
@@ -97,7 +97,8 @@ static ipanon_errno ipanon_externalize_encrypted(ipanonymizer *anonymizer,
   // See https://doc.libsodium.org/secret-key_cryptography/secretbox
   unsigned char ciphertext[CIPHERTEXT_LEN];
   if (crypto_secretbox_easy(ciphertext,
-                            anonymizer->_key, sizeof(anonymizer->_key),
+                            (unsigned char *) &anonymizer->private,
+                            sizeof(anonymizer->private),
                             nonce, realkey) != 0) {
     // Encryption failed
     return IPANON_ERROR_EXTERN;
@@ -170,7 +171,7 @@ static ipanon_errno ipanon_internalize_plaintext(ipanonymizer *anonymizer,
   }
 
   // Read in state.
-  int cnt = fread(anonymizer->_key, sizeof(anonymizer->_key), 1, in);
+  int cnt = fread(&anonymizer->private, sizeof(anonymizer->private), 1, in);
   if (cnt != 1) {
     return IPANON_ERROR_INTERN;
   }
@@ -237,7 +238,7 @@ static ipanon_errno ipanon_internalize_encrypted(ipanonymizer *anonymizer,
   // Decrypt the internal state.
   //
   // See https://doc.libsodium.org/secret-key_cryptography/secretbox
-  if (crypto_secretbox_open_easy(anonymizer->_key,
+  if (crypto_secretbox_open_easy((unsigned char *) &anonymizer->private,
                                  ciphertext, CIPHERTEXT_LEN,
                                  nonce, realkey) != 0) {
     // Encryption failed
@@ -284,7 +285,7 @@ static ipanon_errno ipanon_deinit(ipanonymizer *anonymizer) {
   }
 
   // Nothing really needed but clear the key for security.
-  memset(anonymizer->_key, 0, sizeof(anonymizer->_key));
+  memset(anonymizer->private.key, 0, sizeof(anonymizer->private.key));
 
   return IPANON_OK;
 }
@@ -307,7 +308,7 @@ ipanon_errno ipanon_init(ipanonymizer *anonymizer) {
   if (sodium_init() < 0) {
     return IPANON_ERROR_INIT;
   }
-  randombytes_buf(anonymizer->_key, sizeof(anonymizer->_key));
+  randombytes_buf(anonymizer->private.key, sizeof(anonymizer->private.key));
 
   // Set up "methods"
   anonymizer->init = ipanon_init;

@@ -9,6 +9,42 @@ BeforeEach(ipanon_tests) {}
 AfterEach(ipanon_tests) {}
 
 //-------------------------------------------------------------------------------
+// Helper functions factoring out common testing patterns
+
+static int last_nonzero(unsigned char *data, int bytes) {
+  int end;
+  for (end = bytes - 1; end > 0; --end) {
+    if (data[end] != 0) {
+      break;
+    }
+  }
+  return end;
+}
+
+
+static int count_zeros(unsigned char *data, int bytes) {
+  int zeros = 0;
+  for (int i = 0; i < bytes; ++i) {
+    if (data[i] == 0) {
+      ++zeros;
+    }
+  }
+  return zeros;
+}
+
+
+static int count_same(unsigned char *data1, unsigned char *data2, int bytes) {
+  int same = 0;
+  for (int i = 0; i < bytes; ++i) {
+    if (data1[i] == data2[i]) {
+      ++same;
+    }
+  }
+  return same;
+}
+
+
+//-------------------------------------------------------------------------------
 
 Ensure(ipanon_tests, init_returns_error_on_null) {
   ipanon_errno err = ipanon_init(NULL);
@@ -32,26 +68,21 @@ Ensure(ipanon_tests, init_returns_ok_with_heap_allocation) {
 }
 
 
-Ensure(ipanon_tests, init_initializes_key) {
-  // Strategy: set key to all zeros. The key should not be all zeros after
-  // calling init. (Requires accessing private internals directly.)
+Ensure(ipanon_tests, init_initializes_private) {
+  // Strategy: set state to zero. State should not be zero after init.
+  // (Requires accessing private internals directly.)
   //
-  // Note: there is an extremely low (but non-zero) probability that the key
+  // Note: there is an extremely low (but non-zero) probability that the state
   // is still all zeros after initialization since that can occur by
   // randomization. Thus this check may fail but it is highly unlikely.
   ipanonymizer anonymizer;
-  memset(anonymizer._key, 0, sizeof(anonymizer._key));
+  memset(&anonymizer.private, 0, sizeof(anonymizer.private));
   ipanon_errno err = ipanon_init(&anonymizer);
   assert(err == IPANON_OK);
 
-  int bytes = sizeof(anonymizer._key);
-  int zeros = 0;
-  for (int i = 0; i < bytes; ++i) {
-    if (anonymizer._key[i] == 0) {
-      ++zeros;
-    }
-  }
-  assert_that(zeros, is_less_than(bytes));
+  int keybytes = sizeof(anonymizer.private.key);
+  int keyzeros = count_zeros(anonymizer.private.key, keybytes);
+  assert_that(keyzeros, is_less_than(keybytes));
 }
 
 //-------------------------------------------------------------------------------
@@ -76,8 +107,8 @@ Ensure(ipanon_tests, deinit_returns_ok_on_nonnull) {
 }
 
 
-Ensure(ipanon_tests, deinit_zeros_key) {
-  // Strategy: the key should be all zeros after calling deinit.
+Ensure(ipanon_tests, deinit_zeros_state) {
+  // Strategy: the state should be all zeros after after deinit.
   // (Requires accessing private internals directly.)
   ipanonymizer anonymizer;
   ipanon_errno err = ipanon_init(&anonymizer);
@@ -86,14 +117,9 @@ Ensure(ipanon_tests, deinit_zeros_key) {
   err = anonymizer.deinit(&anonymizer);
   assert(err == IPANON_OK);
 
-  int bytes = sizeof(anonymizer._key);
-  int zeros = 0;
-  for (int i = 0; i < bytes; ++i) {
-    if (anonymizer._key[i] == 0) {
-      ++zeros;
-    }
-  }
-  assert_that(zeros, is_equal_to(bytes));
+  int keybytes = sizeof(anonymizer.private.key);
+  int keyzeros = count_zeros(anonymizer.private.key, keybytes);
+  assert_that(keyzeros, is_equal_to(keybytes));
 }
 
 //-------------------------------------------------------------------------------
@@ -144,7 +170,7 @@ Ensure(ipanon_tests, externalize_saves_plaintext_state) {
   // backwards from end of buffer for first non-zero byte. There should be a
   // non-zero byte in the buffer.
   //
-  // Note: there is an extremely low (but non-zero) probability that the key
+  // Note: there is an extremely low (but non-zero) probability that the state
   // was all zeros. Thus this check may fail but it is highly unlikely.
   ipanonymizer anonymizer;
   ipanon_errno err = ipanon_init(&anonymizer);
@@ -160,13 +186,7 @@ Ensure(ipanon_tests, externalize_saves_plaintext_state) {
   fclose(out);
 
   // Work backwards until the first non-zero byte
-  int end;
-  int bytes = sizeof(outbuf);
-  for (end = bytes - 1; end > 0; --end) {
-    if (outbuf[end] != 0) {
-      break;
-    }
-  }
+  int end = last_nonzero(outbuf, sizeof(outbuf));
   assert_that(end, is_greater_than(0));
 }
 
@@ -176,7 +196,7 @@ Ensure(ipanon_tests, externalize_saves_encrypted_state) {
   // backwards from end of buffer for first non-zero byte. There should be a
   // non-zero byte in the buffer.
   //
-  // Note: there is an extremely low (but non-zero) probability that the key
+  // Note: there is an extremely low (but non-zero) probability that the state
   // was all zeros. Thus this check may fail but it is highly unlikely.
   ipanonymizer anonymizer;
   ipanon_errno err = ipanon_init(&anonymizer);
@@ -192,13 +212,7 @@ Ensure(ipanon_tests, externalize_saves_encrypted_state) {
   fclose(out);
 
   // Work backwards until the first non-zero byte
-  int end;
-  int bytes = sizeof(outbuf);
-  for (end = bytes - 1; end > 0; --end) {
-    if (outbuf[end] != 0) {
-      break;
-    }
-  }
+  int end = last_nonzero(outbuf, sizeof(outbuf));
   assert_that(end, is_greater_than(0));
 }
 
@@ -217,52 +231,44 @@ Ensure(ipanon_tests, internalize_returns_error_on_null) {
 
 
 Ensure(ipanon_tests, internalize_restores_plaintext_state) {
-  // Strategy: set key to all zeros. Use validated externalized state in
-  // buffer and internalize it. The key should exactly match the expected
-  // internal state. (Requires accessing private internals directly.)
+  // Strategy: set state to all zeros. Internalize state. The internalized
+  // state should exactly match the expected internal state.
+  // (Requires accessing private internals directly.)
   ipanonymizer anonymizer;
   ipanon_errno err = ipanon_init(&anonymizer);
   assert(err == IPANON_OK);
-  memset(anonymizer._key, 0, sizeof(anonymizer._key));
+  memset(&anonymizer.private, 0, sizeof(anonymizer.private));
 
   FILE *in = fmemopen(state, sizeof(state), "r");
   err = anonymizer.internalize(&anonymizer, in, NULL, 0);
   assert_that(err, is_equal_to(IPANON_OK));
   fclose(in);
 
-  int bytes = sizeof(anonymizer._key);
-  int same = 0;
-  for (int i = 0; i < bytes; ++i) {
-    if (anonymizer._key[i] == state[i]) {
-      ++same;
-    }
-  }
-  assert_that(same, is_equal_to(bytes));
+  unsigned char *key = ((struct private *) &state)->key;
+  int keybytes = sizeof(anonymizer.private.key);
+  int keysame = count_same(anonymizer.private.key, key, keybytes);
+  assert_that(keysame, is_equal_to(keybytes));
 }
 
 
 Ensure(ipanon_tests, internalize_restores_encrypted_state) {
-  // Strategy: set key to all zeros. Use validated externalized state in
-  // buffer and internalize it. The key should exactly match the expected
-  // internal state. (Requires accessing private internals directly.)
+  // Strategy: set state to all zeros. Internalize state. The internalized
+  // state should exactly match the expected internal state.
+  // (Requires accessing private internals directly.)
   ipanonymizer anonymizer;
   ipanon_errno err = ipanon_init(&anonymizer);
   assert(err == IPANON_OK);
-  memset(anonymizer._key, 0, sizeof(anonymizer._key));
+  memset(&anonymizer.private, 0, sizeof(anonymizer.private));
 
   FILE *in = fmemopen(externed_state, sizeof(externed_state), "r");
   err = anonymizer.internalize(&anonymizer, in, key, strlen(key));
   assert_that(err, is_equal_to(IPANON_OK));
   fclose(in);
 
-  int bytes = sizeof(anonymizer._key);
-  int same = 0;
-  for (int i = 0; i < bytes; ++i) {
-    if (anonymizer._key[i] == state[i]) {
-      ++same;
-    }
-  }
-  assert_that(same, is_equal_to(bytes));
+  unsigned char *key = ((struct private *) &state)->key;
+  int keybytes = sizeof(anonymizer.private.key);
+  int keysame = count_same(anonymizer.private.key, key, keybytes);
+  assert_that(keysame, is_equal_to(keybytes));
 }
 
 
@@ -280,9 +286,9 @@ Ensure(ipanon_tests, internalize_restores_encrypted_state_bad_pass) {
 
 
 Ensure(ipanon_tests, externalize_internalize_roundtrip_plaintext) {
-  // Strategy: create two anonymizers and compare their keys which should be
+  // Strategy: create two anonymizers and compare their state which should be
   // different. Externalize first anonymizer and internalize into second. The
-  // two keys should be identical. (Requires accessing private internals
+  // two states should be identical. (Requires accessing private internals
   // directly.)
   ipanonymizer anonymizer1, anonymizer2;
   ipanon_errno err = ipanon_init(&anonymizer1);
@@ -290,14 +296,11 @@ Ensure(ipanon_tests, externalize_internalize_roundtrip_plaintext) {
   err = ipanon_init(&anonymizer2);
   assert(err == IPANON_OK);
 
-  int same = 0;
-  int bytes = sizeof(anonymizer1._key);
-  for (int i = 0; i < bytes; ++i) {
-    if (anonymizer1._key[i] == anonymizer2._key[i]) {
-      ++same;
-    }
-  }
-  assert_that(same, is_not_equal_to(bytes));
+  // Compare keys (should be different)
+  int keybytes = sizeof(anonymizer1.private.key);
+  int keysame = count_same(anonymizer1.private.key,
+                           anonymizer2.private.key, keybytes);
+  assert_that(keysame, is_not_equal_to(keybytes));
 
   // Externalize
   // Note: fmemopen writes \0 to last spot, make room...
@@ -313,14 +316,11 @@ Ensure(ipanon_tests, externalize_internalize_roundtrip_plaintext) {
   assert(err == IPANON_OK);
   fclose(in);
 
-  // Compare
-  same = 0;
-  for (int i = 0; i < bytes; ++i) {
-    if (anonymizer1._key[i] == anonymizer2._key[i]) {
-      ++same;
-    }
-  }
-  assert_that(same, is_equal_to(bytes));
+  // Compare keys again (should be the same)
+  keybytes = sizeof(anonymizer1.private.key);
+  keysame = count_same(anonymizer1.private.key,
+                           anonymizer2.private.key, keybytes);
+  assert_that(keysame, is_equal_to(keybytes));
 }
 
 
@@ -335,14 +335,11 @@ Ensure(ipanon_tests, externalize_internalize_roundtrip_encrypted) {
   err = ipanon_init(&anonymizer2);
   assert(err == IPANON_OK);
 
-  int same = 0;
-  int bytes = sizeof(anonymizer1._key);
-  for (int i = 0; i < bytes; ++i) {
-    if (anonymizer1._key[i] == anonymizer2._key[i]) {
-      ++same;
-    }
-  }
-  assert_that(same, is_not_equal_to(bytes));
+  // Compare keys (should be different)
+  int keybytes = sizeof(anonymizer1.private.key);
+  int keysame = count_same(anonymizer1.private.key,
+                           anonymizer2.private.key, keybytes);
+  assert_that(keysame, is_not_equal_to(keybytes));
 
   // Externalize
   // Note: fmemopen writes \0 to last spot, make room...
@@ -358,14 +355,11 @@ Ensure(ipanon_tests, externalize_internalize_roundtrip_encrypted) {
   assert(err == IPANON_OK);
   fclose(in);
 
-  // Compare
-  same = 0;
-  for (int i = 0; i < bytes; ++i) {
-    if (anonymizer1._key[i] == anonymizer2._key[i]) {
-      ++same;
-    }
-  }
-  assert_that(same, is_equal_to(bytes));
+  // Compare keys again (should be the same)
+  keybytes = sizeof(anonymizer1.private.key);
+  keysame = count_same(anonymizer1.private.key,
+                           anonymizer2.private.key, keybytes);
+  assert_that(keysame, is_equal_to(keybytes));
 }
 
 //-------------------------------------------------------------------------------
@@ -376,11 +370,11 @@ TestSuite *ipanon_tests() {
     add_test_with_context(suite, ipanon_tests, init_returns_error_on_null);
     add_test_with_context(suite, ipanon_tests, init_returns_ok_with_stack_allocation);
     add_test_with_context(suite, ipanon_tests, init_returns_ok_with_heap_allocation);
-    add_test_with_context(suite, ipanon_tests, init_initializes_key);
+    add_test_with_context(suite, ipanon_tests, init_initializes_private);
 
     add_test_with_context(suite, ipanon_tests, deinit_returns_error_on_null);
     add_test_with_context(suite, ipanon_tests, deinit_returns_ok_on_nonnull);
-    add_test_with_context(suite, ipanon_tests, deinit_zeros_key);
+    add_test_with_context(suite, ipanon_tests, deinit_zeros_state);
 
     add_test_with_context(suite, ipanon_tests, externalize_returns_error_on_null);
     add_test_with_context(suite, ipanon_tests, externalize_saves_plaintext_state);
