@@ -80,6 +80,7 @@ struct ipanon_state {
   // Private internals: do not access them directly
   struct private {
     unsigned char key[crypto_generichash_KEYBYTES];
+    unsigned char pad[crypto_generichash_BYTES];
   } private;
 };
 

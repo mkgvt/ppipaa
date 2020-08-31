@@ -6,6 +6,7 @@
 
 // Length of externalized data
 #define CIPHERTEXT_LEN (crypto_generichash_KEYBYTES + \
+                        crypto_generichash_BYTES + \
                         crypto_secretbox_MACBYTES)
 
 
@@ -286,6 +287,7 @@ static ipanon_errno ipanon_deinit(ipanonymizer *anonymizer) {
 
   // Nothing really needed but clear the key for security.
   memset(anonymizer->private.key, 0, sizeof(anonymizer->private.key));
+  memset(anonymizer->private.pad, 0, sizeof(anonymizer->private.pad));
 
   return IPANON_OK;
 }
@@ -309,6 +311,7 @@ ipanon_errno ipanon_init(ipanonymizer *anonymizer) {
     return IPANON_ERROR_INIT;
   }
   randombytes_buf(anonymizer->private.key, sizeof(anonymizer->private.key));
+  randombytes_buf(anonymizer->private.pad, sizeof(anonymizer->private.pad));
 
   // Set up "methods"
   anonymizer->init = ipanon_init;
