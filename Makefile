@@ -17,10 +17,12 @@
 ## You should have received a copy of the GNU Lesser General Public License
 ## along with uint128. If not, see <https://www.gnu.org/licenses/>.
 
+U128LIB = ~/src/uint128
+
 CC     ?= gcc
-CFLAGS  = -fPIC -I. -Wall -Wpedantic -Wextra
+CFLAGS  = -fPIC -I . -I $(U128LIB) -Wall -Wpedantic -Wextra
 LDFLAGS = -lcgreen -lsodium
-DFLAGS  = -MM -MF
+DFLAGS  = -I $(U128LIB) -MM -MF
 
 SRC     = ipanon.c
 OBJ     = ${SRC:.c=.o}

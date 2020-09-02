@@ -13,13 +13,16 @@
 
 
 typedef enum {
-  IPANON_OK,             // No error
-  IPANON_ERROR_NULL,     // Anonymizer is NULL
-  IPANON_ERROR_INIT,     // Initialization failed
-  IPANON_ERROR_DEINIT,   // Deinitialization failed
-  IPANON_ERROR_EXTERN,   // Externalization failed
-  IPANON_ERROR_INTERN,   // Internalization failed
-  IPANON_END_OF_ERRORS,  // sentinel indicating end of errors (must be last)
+  IPANON_OK,                    // No error
+  IPANON_ERROR_NULL,            // Anonymizer is NULL
+  IPANON_ERROR_INIT,            // Initialization failed
+  IPANON_ERROR_DEINIT,          // Deinitialization failed
+  IPANON_ERROR_EXTERN,          // Externalization failed
+  IPANON_ERROR_INTERN,          // Internalization failed
+  IPANON_ERROR_ANON_PREFIX,     // Invalid prefix bits in anonymize call
+  IPANON_ERROR_ANON_ADDR_NULL,  // Plaintext or anonymized addr ptr is NULL
+  IPANON_ERROR_ANON_PRF_FAIL,   // Pseudo-random function failed
+  IPANON_END_OF_ERRORS,         // indicates end of errors (must be last)
 } ipanon_errno;
 
 
@@ -76,6 +79,50 @@ struct ipanon_state {
   */
   ipanon_errno (*internalize)(ipanonymizer *anonymizer, FILE *in,
                               char *key, int keylen);
+
+
+  /*
+  -- Anonymize the IPv4 address.
+  --
+  -- Returns IPANON_OK or IPANON_ERROR_ANON_xxxx.
+  --
+  -- NOTE:
+  --
+  -- - ipaddr and anonaddr are in network order
+  --
+  -- - prefix specifies the number of bits in the prefix to leave
+  --   unanonymized: prefix=0 means anonymize all bits, prefix=32 means
+  --   no bits.
+  --
+  -- - the input and output address buffers can be the same for
+  --   conversion in place.
+  */
+  ipanon_errno (*anonymize_ipv4)(ipanonymizer *anonymizer,
+                                 unsigned int prefix,
+                                 struct in_addr *ipaddr,
+                                 struct in_addr *anonaddr);
+
+  /*
+  -- Anonymize the IPv6 address.
+  --
+  -- Returns IPANON_OK or IPANON_ERROR_ANON_xxxx.
+  --
+  -- NOTE:
+  --
+  -- - ipaddr and anonaddr are in network order
+  --
+  -- - prefix specifies the number of bits in the prefix to leave
+  --   unanonymized: prefix=0 means anonymize all bits, prefix=128 means
+  --   no bits.
+  --
+  -- - the input and output address buffers can be the same for
+  --   conversion in place.
+  */
+  ipanon_errno (*anonymize_ipv6)(ipanonymizer *anonymizer,
+                                 unsigned int prefix,
+                                 struct in6_addr *ipaddr,
+                                 struct in6_addr *anonaddr);
+
 
   // Private internals: do not access them directly
   struct private {
