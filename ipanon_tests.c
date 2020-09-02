@@ -1,3 +1,27 @@
+/*
+-- The ipanon IP address anonymization library
+--
+-- Performs full or partial anonymization of IP addresses using the CryptopAN
+-- algorithm using modern cryptographic primitives from libsodium which are
+-- well supported on both high and low end processors.
+--
+-- Copyright (C) 2020, Mark Gardner <mkg@vt.edu>.
+--
+-- This file is part of ipanon.
+--
+-- ipanon is free software: you can redistribute it and/or modify it under the
+-- terms of the GNU Lesser General Public License as published by the Free
+-- Software Foundation, either version 3 of the License, or (at your option)
+-- any later version.
+--
+-- ipanon is distributed in the hope that it will be useful, but WITHOUT ANY
+-- WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+-- FOR A PARTICULAR PURPOSE. See the GNU Lesser General Public License for
+-- more details.
+--
+-- You should have received a copy of the GNU Lesser General Public License
+-- along with ipanon. If not, see <https://www.gnu.org/licenses/>.
+*/
 #include <arpa/inet.h>
 #include <assert.h>
 #include <cgreen/cgreen.h>
