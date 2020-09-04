@@ -1,5 +1,5 @@
 /*
--- The ipanon IP address anonymization library
+-- The ppipaa IP address anonymization library
 --
 -- Performs full or partial anonymization of IP addresses using the CryptopAN
 -- algorithm using modern cryptographic primitives from libsodium which are
@@ -7,36 +7,36 @@
 --
 -- Copyright (C) 2020, Mark Gardner <mkg@vt.edu>.
 --
--- This file is part of ipanon.
+-- This file is part of ppipaa.
 --
--- ipanon is free software: you can redistribute it and/or modify it under the
+-- ppipaa is free software: you can redistribute it and/or modify it under the
 -- terms of the GNU Lesser General Public License as published by the Free
 -- Software Foundation, either version 3 of the License, or (at your option)
 -- any later version.
 --
--- ipanon is distributed in the hope that it will be useful, but WITHOUT ANY
+-- ppipaa is distributed in the hope that it will be useful, but WITHOUT ANY
 -- WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
 -- FOR A PARTICULAR PURPOSE. See the GNU Lesser General Public License for
 -- more details.
 --
 -- You should have received a copy of the GNU Lesser General Public License
--- along with ipanon. If not, see <https://www.gnu.org/licenses/>.
+-- along with ppipaa. If not, see <https://www.gnu.org/licenses/>.
 */
 #include <arpa/inet.h>
 #include <assert.h>
 #include <cgreen/cgreen.h>
 #include <cgreen/mocks.h>
 
-#include "ipanon.h"
+#include "ppipaa.h"
 #include "uint128.h"
 
-//-------------------------------------------------------------------------------
+//------------------------------------------------------------------------------
 
-Describe(ipanon_tests);
-BeforeEach(ipanon_tests) {}
-AfterEach(ipanon_tests) {}
+Describe(ppipaa);
+BeforeEach(ppipaa) {}
+AfterEach(ppipaa) {}
 
-//-------------------------------------------------------------------------------
+//------------------------------------------------------------------------------
 
 // IP addresses for testing
 const char *ipv4addr = "198.51.100.47";
@@ -92,7 +92,7 @@ unsigned char externed_state[] = {
   0x6C, 0x5E, 0xBD, 0x7B, 0x2C, 0x7E, 0x0A, 0xF8,
  };
 
-//-------------------------------------------------------------------------------
+//------------------------------------------------------------------------------
 // Helper functions factoring out common testing patterns
 
 static int last_nonzero(unsigned char *data, int bytes) {
@@ -130,7 +130,7 @@ static int count_same(unsigned char *data1, unsigned char *data2, int bytes) {
 
 // Print data for internalization tests...
 #if PRINTSTATE
-void print_state(ipanonymizer *anonymizer,
+void print_state(ppipaaymizer *anonymizer,
                  const unsigned char *external_state,
                  unsigned int size) {
   printf("unsigned char state[] = {\n ");
@@ -158,41 +158,41 @@ void print_state(ipanonymizer *anonymizer,
 }
 #endif
 
-//-------------------------------------------------------------------------------
+//------------------------------------------------------------------------------
 
-Ensure(ipanon_tests, init_returns_error_on_null) {
-  ipanon_errno err = ipanon_init(NULL);
-  assert_that(err, is_equal_to(IPANON_ERROR_NULL));
+Ensure(ppipaa, init_returns_error_on_null) {
+  ppipaa_errno err = ppipaa_init(NULL);
+  assert_that(err, is_equal_to(PPIPAA_ERROR_NULL));
 }
 
 
-Ensure(ipanon_tests, init_returns_ok_with_stack_allocation) {
-  ipanonymizer anonymizer;
-  ipanon_errno err = ipanon_init(&anonymizer);
-  assert_that(err, is_equal_to(IPANON_OK));
+Ensure(ppipaa, init_returns_ok_with_stack_allocation) {
+  ppipaaymizer anonymizer;
+  ppipaa_errno err = ppipaa_init(&anonymizer);
+  assert_that(err, is_equal_to(PPIPAA_OK));
 }
 
 
-Ensure(ipanon_tests, init_returns_ok_with_heap_allocation) {
-  ipanonymizer *anonymizer = malloc(sizeof(ipanonymizer));
+Ensure(ppipaa, init_returns_ok_with_heap_allocation) {
+  ppipaaymizer *anonymizer = malloc(sizeof(ppipaaymizer));
   assert(anonymizer != NULL);
-  ipanon_errno err = ipanon_init(anonymizer);
-  assert_that(err, is_equal_to(IPANON_OK));
+  ppipaa_errno err = ppipaa_init(anonymizer);
+  assert_that(err, is_equal_to(PPIPAA_OK));
   free(anonymizer);
 }
 
 
-Ensure(ipanon_tests, init_initializes_private) {
+Ensure(ppipaa, init_initializes_private) {
   // Strategy: set state to zero. State should not be zero after init.
   // (Requires accessing private internals directly.)
   //
   // Note: there is an extremely low (but non-zero) probability that the state
   // is still all zeros after initialization since that can occur by
   // randomization. Thus this check may fail but it is highly unlikely.
-  ipanonymizer anonymizer;
+  ppipaaymizer anonymizer;
   memset(&anonymizer.private, 0, sizeof(anonymizer.private));
-  ipanon_errno err = ipanon_init(&anonymizer);
-  assert(err == IPANON_OK);
+  ppipaa_errno err = ppipaa_init(&anonymizer);
+  assert(err == PPIPAA_OK);
 
   int keybytes = sizeof(anonymizer.private.key);
   int keyzeros = count_zeros(anonymizer.private.key, keybytes);
@@ -203,37 +203,37 @@ Ensure(ipanon_tests, init_initializes_private) {
   assert_that(padzeros, is_less_than(padbytes));
 }
 
-//-------------------------------------------------------------------------------
+//------------------------------------------------------------------------------
 
-Ensure(ipanon_tests, deinit_returns_error_on_null) {
-  ipanonymizer anonymizer;
-  ipanon_errno err = ipanon_init(&anonymizer);
-  assert(err == IPANON_OK);
+Ensure(ppipaa, deinit_returns_error_on_null) {
+  ppipaaymizer anonymizer;
+  ppipaa_errno err = ppipaa_init(&anonymizer);
+  assert(err == PPIPAA_OK);
 
   err = anonymizer.deinit(NULL);
-  assert_that(err, is_equal_to(IPANON_ERROR_NULL));
+  assert_that(err, is_equal_to(PPIPAA_ERROR_NULL));
 }
 
 
-Ensure(ipanon_tests, deinit_returns_ok_on_nonnull) {
-  ipanonymizer anonymizer;
-  ipanon_errno err = ipanon_init(&anonymizer);
-  assert(err == IPANON_OK);
+Ensure(ppipaa, deinit_returns_ok_on_nonnull) {
+  ppipaaymizer anonymizer;
+  ppipaa_errno err = ppipaa_init(&anonymizer);
+  assert(err == PPIPAA_OK);
 
   err = anonymizer.deinit(&anonymizer);
-  assert_that(err, is_equal_to(IPANON_OK));
+  assert_that(err, is_equal_to(PPIPAA_OK));
 }
 
 
-Ensure(ipanon_tests, deinit_zeros_state) {
+Ensure(ppipaa, deinit_zeros_state) {
   // Strategy: the state should be all zeros after after deinit.
   // (Requires accessing private internals directly.)
-  ipanonymizer anonymizer;
-  ipanon_errno err = ipanon_init(&anonymizer);
-  assert(err == IPANON_OK);
+  ppipaaymizer anonymizer;
+  ppipaa_errno err = ppipaa_init(&anonymizer);
+  assert(err == PPIPAA_OK);
 
   err = anonymizer.deinit(&anonymizer);
-  assert(err == IPANON_OK);
+  assert(err == PPIPAA_OK);
 
   int keybytes = sizeof(anonymizer.private.key);
   int keyzeros = count_zeros(anonymizer.private.key, keybytes);
@@ -244,40 +244,40 @@ Ensure(ipanon_tests, deinit_zeros_state) {
   assert_that(padzeros, is_equal_to(padbytes));
 }
 
-//-------------------------------------------------------------------------------
+//------------------------------------------------------------------------------
 
-Ensure(ipanon_tests, externalize_returns_error_on_null) {
-  ipanonymizer anonymizer;
-  ipanon_errno err = ipanon_init(&anonymizer);
-  assert(err == IPANON_OK);
+Ensure(ppipaa, externalize_returns_error_on_null) {
+  ppipaaymizer anonymizer;
+  ppipaa_errno err = ppipaa_init(&anonymizer);
+  assert(err == PPIPAA_OK);
 
   char *key = "unused";
   unsigned char outbuf[1]; // should be unused
   FILE *out = fmemopen(outbuf, sizeof(outbuf), "w");
   err = anonymizer.externalize(NULL, out, key, strlen(key));
-  assert_that(err, is_equal_to(IPANON_ERROR_NULL));
+  assert_that(err, is_equal_to(PPIPAA_ERROR_NULL));
   fclose(out);
 }
 
 
-Ensure(ipanon_tests, externalize_saves_plaintext_state) {
+Ensure(ppipaa, externalize_saves_plaintext_state) {
   // Strategy: fill buffer with zeros, externalize to buffer, and check
   // backwards from end of buffer for first non-zero byte. There should be a
   // non-zero byte in the buffer.
   //
   // Note: there is an extremely low (but non-zero) probability that the state
   // was all zeros. Thus this check may fail but it is highly unlikely.
-  ipanonymizer anonymizer;
-  ipanon_errno err = ipanon_init(&anonymizer);
-  assert(err == IPANON_OK);
+  ppipaaymizer anonymizer;
+  ppipaa_errno err = ppipaa_init(&anonymizer);
+  assert(err == PPIPAA_OK);
 
   // Note: fmemopen writes \0 to last spot, make room...
-  unsigned char outbuf[ipanon_saved_state_size() + 1];
+  unsigned char outbuf[ppipaa_saved_state_size() + 1];
   memset(outbuf, 0, sizeof(outbuf));
 
   FILE *out = fmemopen(outbuf, sizeof(outbuf), "w");
   err = anonymizer.externalize(&anonymizer, out, NULL, 0);
-  assert_that(err, is_equal_to(IPANON_OK));
+  assert_that(err, is_equal_to(PPIPAA_OK));
   fclose(out);
 
   // Work backwards until the first non-zero byte
@@ -286,29 +286,29 @@ Ensure(ipanon_tests, externalize_saves_plaintext_state) {
 }
 
 
-Ensure(ipanon_tests, externalize_saves_encrypted_state) {
+Ensure(ppipaa, externalize_saves_encrypted_state) {
   // Strategy: fill buffer with zeros, externalize to buffer, and check
   // backwards from end of buffer for first non-zero byte. There should be a
   // non-zero byte in the buffer.
   //
   // Note: there is an extremely low (but non-zero) probability that the state
   // was all zeros. Thus this check may fail but it is highly unlikely.
-  ipanonymizer anonymizer;
-  ipanon_errno err = ipanon_init(&anonymizer);
-  assert(err == IPANON_OK);
+  ppipaaymizer anonymizer;
+  ppipaa_errno err = ppipaa_init(&anonymizer);
+  assert(err == PPIPAA_OK);
 
   // Note: fmemopen writes \0 to last spot, make room...
-  unsigned char outbuf[ipanon_saved_state_size() + 1];
+  unsigned char outbuf[ppipaa_saved_state_size() + 1];
   memset(outbuf, 0, sizeof(outbuf));
 
   FILE *out = fmemopen(outbuf, sizeof(outbuf), "w");
   err = anonymizer.externalize(&anonymizer, out, key, strlen(key));
-  assert_that(err, is_equal_to(IPANON_OK));
+  assert_that(err, is_equal_to(PPIPAA_OK));
   fclose(out);
 
   // Print data for internalization tests...
   #if PRINTSTATE
-  print_state(&anonymizer, outbuf, ipanon_saved_state_size());
+  print_state(&anonymizer, outbuf, ppipaa_saved_state_size());
   #endif
 
   // Work backwards until the first non-zero byte
@@ -317,31 +317,31 @@ Ensure(ipanon_tests, externalize_saves_encrypted_state) {
 }
 
 
-Ensure(ipanon_tests, internalize_returns_error_on_null) {
-  ipanonymizer anonymizer;
-  ipanon_errno err = ipanon_init(&anonymizer);
-  assert(err == IPANON_OK);
+Ensure(ppipaa, internalize_returns_error_on_null) {
+  ppipaaymizer anonymizer;
+  ppipaa_errno err = ppipaa_init(&anonymizer);
+  assert(err == PPIPAA_OK);
 
   unsigned char inbuf[] = "state";
   FILE *unused = fmemopen(inbuf, sizeof(inbuf), "r");
   err = anonymizer.internalize(NULL, unused, key, strlen(key));
   fclose(unused);
-  assert_that(err, is_equal_to(IPANON_ERROR_NULL));
+  assert_that(err, is_equal_to(PPIPAA_ERROR_NULL));
 }
 
 
-Ensure(ipanon_tests, internalize_restores_plaintext_state) {
+Ensure(ppipaa, internalize_restores_plaintext_state) {
   // Strategy: set state to all zeros. Internalize state. The internalized
   // state should exactly match the expected internal state.
   // (Requires accessing private internals directly.)
-  ipanonymizer anonymizer;
-  ipanon_errno err = ipanon_init(&anonymizer);
-  assert(err == IPANON_OK);
+  ppipaaymizer anonymizer;
+  ppipaa_errno err = ppipaa_init(&anonymizer);
+  assert(err == PPIPAA_OK);
   memset(&anonymizer.private, 0, sizeof(anonymizer.private));
 
   FILE *in = fmemopen(state, sizeof(state), "r");
   err = anonymizer.internalize(&anonymizer, in, NULL, 0);
-  assert_that(err, is_equal_to(IPANON_OK));
+  assert_that(err, is_equal_to(PPIPAA_OK));
   fclose(in);
 
   unsigned char *key = ((struct private *) &state)->key;
@@ -356,18 +356,18 @@ Ensure(ipanon_tests, internalize_restores_plaintext_state) {
 }
 
 
-Ensure(ipanon_tests, internalize_restores_encrypted_state) {
+Ensure(ppipaa, internalize_restores_encrypted_state) {
   // Strategy: set state to all zeros. Internalize state. The internalized
   // state should exactly match the expected internal state.
   // (Requires accessing private internals directly.)
-  ipanonymizer anonymizer;
-  ipanon_errno err = ipanon_init(&anonymizer);
-  assert(err == IPANON_OK);
+  ppipaaymizer anonymizer;
+  ppipaa_errno err = ppipaa_init(&anonymizer);
+  assert(err == PPIPAA_OK);
   memset(&anonymizer.private, 0, sizeof(anonymizer.private));
 
   FILE *in = fmemopen(externed_state, sizeof(externed_state), "r");
   err = anonymizer.internalize(&anonymizer, in, key, strlen(key));
-  assert_that(err, is_equal_to(IPANON_OK));
+  assert_that(err, is_equal_to(PPIPAA_OK));
   fclose(in);
 
   unsigned char *key = ((struct private *) &state)->key;
@@ -382,29 +382,29 @@ Ensure(ipanon_tests, internalize_restores_encrypted_state) {
 }
 
 
-Ensure(ipanon_tests, internalize_restores_encrypted_state_bad_pass) {
-  ipanonymizer anonymizer;
-  ipanon_errno err = ipanon_init(&anonymizer);
-  assert(err == IPANON_OK);
+Ensure(ppipaa, internalize_restores_encrypted_state_bad_pass) {
+  ppipaaymizer anonymizer;
+  ppipaa_errno err = ppipaa_init(&anonymizer);
+  assert(err == PPIPAA_OK);
 
   char *key = "badpass";
   FILE *in = fmemopen(externed_state, sizeof(externed_state), "r");
   err = anonymizer.internalize(&anonymizer, in, key, strlen(key));
-  assert_that(err, is_equal_to(IPANON_ERROR_INTERN));
+  assert_that(err, is_equal_to(PPIPAA_ERROR_INTERN));
   fclose(in);
 }
 
 
-Ensure(ipanon_tests, externalize_internalize_roundtrip_plaintext) {
+Ensure(ppipaa, externalize_internalize_roundtrip_plaintext) {
   // Strategy: create two anonymizers and compare their state which should be
   // different. Externalize first anonymizer and internalize into second. The
   // two states should be identical. (Requires accessing private internals
   // directly.)
-  ipanonymizer anonymizer1, anonymizer2;
-  ipanon_errno err = ipanon_init(&anonymizer1);
-  assert(err == IPANON_OK);
-  err = ipanon_init(&anonymizer2);
-  assert(err == IPANON_OK);
+  ppipaaymizer anonymizer1, anonymizer2;
+  ppipaa_errno err = ppipaa_init(&anonymizer1);
+  assert(err == PPIPAA_OK);
+  err = ppipaa_init(&anonymizer2);
+  assert(err == PPIPAA_OK);
 
   // Compare keys (should be different)
   int keybytes = sizeof(anonymizer1.private.key);
@@ -420,16 +420,16 @@ Ensure(ipanon_tests, externalize_internalize_roundtrip_plaintext) {
 
   // Externalize
   // Note: fmemopen writes \0 to last spot, make room...
-  unsigned char buf[ipanon_saved_state_size() + 1];
+  unsigned char buf[ppipaa_saved_state_size() + 1];
   FILE *out = fmemopen(buf, sizeof(buf), "w");
   err = anonymizer1.externalize(&anonymizer1, out, NULL, 0);
-  assert(err == IPANON_OK);
+  assert(err == PPIPAA_OK);
   fclose(out);
 
   // Internalize
   FILE *in = fmemopen(buf, sizeof(buf), "r");
   err = anonymizer2.internalize(&anonymizer2, in, NULL, 0);
-  assert(err == IPANON_OK);
+  assert(err == PPIPAA_OK);
   fclose(in);
 
   // Compare keys again (should be the same)
@@ -446,16 +446,16 @@ Ensure(ipanon_tests, externalize_internalize_roundtrip_plaintext) {
 }
 
 
-Ensure(ipanon_tests, externalize_internalize_roundtrip_encrypted) {
+Ensure(ppipaa, externalize_internalize_roundtrip_encrypted) {
   // Strategy: create two anonymizers and compare their keys which should be
   // different. Externalize first anonymizer and internalize into second. The
   // two keys should be identical. (Requires accessing private internals
   // directly.)
-  ipanonymizer anonymizer1, anonymizer2;
-  ipanon_errno err = ipanon_init(&anonymizer1);
-  assert(err == IPANON_OK);
-  err = ipanon_init(&anonymizer2);
-  assert(err == IPANON_OK);
+  ppipaaymizer anonymizer1, anonymizer2;
+  ppipaa_errno err = ppipaa_init(&anonymizer1);
+  assert(err == PPIPAA_OK);
+  err = ppipaa_init(&anonymizer2);
+  assert(err == PPIPAA_OK);
 
   // Compare keys (should be different)
   int keybytes = sizeof(anonymizer1.private.key);
@@ -471,16 +471,16 @@ Ensure(ipanon_tests, externalize_internalize_roundtrip_encrypted) {
 
   // Externalize
   // Note: fmemopen writes \0 to last spot, make room...
-  unsigned char buf[ipanon_saved_state_size() + 1];
+  unsigned char buf[ppipaa_saved_state_size() + 1];
   FILE *out = fmemopen(buf, sizeof(buf), "w");
   err = anonymizer1.externalize(&anonymizer1, out, key, strlen(key));
-  assert(err == IPANON_OK);
+  assert(err == PPIPAA_OK);
   fclose(out);
 
   // Internalize
   FILE *in = fmemopen(buf, sizeof(buf), "r");
   err = anonymizer2.internalize(&anonymizer2, in, key, strlen(key));
-  assert(err == IPANON_OK);
+  assert(err == PPIPAA_OK);
   fclose(in);
 
   // Compare keys again (should be the same)
@@ -496,7 +496,7 @@ Ensure(ipanon_tests, externalize_internalize_roundtrip_encrypted) {
   assert_that(padsame, is_equal_to(padbytes));
 }
 
-//-------------------------------------------------------------------------------
+//------------------------------------------------------------------------------
 
 // Most of the tests below require these variables
 struct in_addr raw4addr;
@@ -533,36 +533,36 @@ bool valid_ipv4_anon(unsigned int prefix,
 }
 
 
-Ensure(ipanon_tests, anonymize_ipv4_returns_error_on_null) {
-  ipanonymizer anonymizer;
-  ipanon_errno err = ipanon_init(&anonymizer);
-  assert(err == IPANON_OK);
+Ensure(ppipaa, anonymize_ipv4_returns_error_on_null) {
+  ppipaaymizer anonymizer;
+  ppipaa_errno err = ppipaa_init(&anonymizer);
+  assert(err == PPIPAA_OK);
 
   err = anonymizer.anonymize_ipv4(NULL, 14, &raw4addr, &anon4addr);
-  assert_that(err, is_equal_to(IPANON_ERROR_NULL));
+  assert_that(err, is_equal_to(PPIPAA_ERROR_NULL));
 }
 
 
-Ensure(ipanon_tests, anonymize_ipv4_returns_error_on_bad_prefix) {
+Ensure(ppipaa, anonymize_ipv4_returns_error_on_bad_prefix) {
   // Strategy: test negative and too many prefix
-  ipanonymizer anonymizer;
-  ipanon_errno err = ipanon_init(&anonymizer);
-  assert(err == IPANON_OK);
+  ppipaaymizer anonymizer;
+  ppipaa_errno err = ppipaa_init(&anonymizer);
+  assert(err == PPIPAA_OK);
 
   int rc = inet_pton(AF_INET, ipv4addr, &raw4addr);
   assert(rc == 1);
 
   err = anonymizer.anonymize_ipv4(&anonymizer, 33, &raw4addr, &anon4addr);
-  assert_that(err, is_equal_to(IPANON_ERROR_ANON_PREFIX));
+  assert_that(err, is_equal_to(PPIPAA_ERROR_ANON_PREFIX));
 }
 
 
-Ensure(ipanon_tests, anonymize_ipv4_returns_ok_on_good_prefix) {
+Ensure(ppipaa, anonymize_ipv4_returns_ok_on_good_prefix) {
   // Strategy: cycle through a set of prefixes, validating that anonymized
   // address is valid.
-  ipanonymizer anonymizer;
-  ipanon_errno err = ipanon_init(&anonymizer);
-  assert(err == IPANON_OK);
+  ppipaaymizer anonymizer;
+  ppipaa_errno err = ppipaa_init(&anonymizer);
+  assert(err == PPIPAA_OK);
 
   // Use predictable values for key and pad
   memcpy(anonymizer.private.key, state,
@@ -575,16 +575,16 @@ Ensure(ipanon_tests, anonymize_ipv4_returns_ok_on_good_prefix) {
 
   for (unsigned int prefix = 0; prefix <= 8 * sizeof(uint32_t); ++prefix) {
     err = anonymizer.anonymize_ipv4(&anonymizer, prefix, &raw4addr, &anon4addr);
-    assert_that(err, is_equal_to(IPANON_OK));
+    assert_that(err, is_equal_to(PPIPAA_OK));
     assert_that(valid_ipv4_anon(prefix, &raw4addr, &anon4addr), is_true);
   }
 }
 
 
-Ensure(ipanon_tests, anonymize_ipv4_works_with_same_buffer_in_and_out) {
-  ipanonymizer anonymizer;
-  ipanon_errno err = ipanon_init(&anonymizer);
-  assert(err == IPANON_OK);
+Ensure(ppipaa, anonymize_ipv4_works_with_same_buffer_in_and_out) {
+  ppipaaymizer anonymizer;
+  ppipaa_errno err = ppipaa_init(&anonymizer);
+  assert(err == PPIPAA_OK);
 
   // Use predictable values for key and pad
   memcpy(anonymizer.private.key, state,
@@ -597,12 +597,12 @@ Ensure(ipanon_tests, anonymize_ipv4_works_with_same_buffer_in_and_out) {
 
   for (unsigned int prefix = 0; prefix <= 8 * sizeof(uint32_t); ++prefix) {
     err = anonymizer.anonymize_ipv4(&anonymizer, prefix, &raw4addr, &anon4addr);
-    assert(err == IPANON_OK);
+    assert(err == PPIPAA_OK);
 
     // Use temporary address for input and output buffers
     struct in_addr addr = raw4addr;
     err = anonymizer.anonymize_ipv4(&anonymizer, prefix, &addr, &addr);
-    assert(err == IPANON_OK);
+    assert(err == PPIPAA_OK);
 
     // Verify that using two buffers or reusing one buffer makes no difference
     uint32_t anon_separate_buffers = anon4addr.s_addr;
@@ -612,7 +612,7 @@ Ensure(ipanon_tests, anonymize_ipv4_works_with_same_buffer_in_and_out) {
 }
 
 
-//-------------------------------------------------------------------------------
+//------------------------------------------------------------------------------
 
 // Most of the tests below require these variables
 struct in6_addr raw6addr;
@@ -654,36 +654,36 @@ bool valid_ipv6_anon(unsigned int prefix,
 }
 
 
-Ensure(ipanon_tests, anonymize_ipv6_returns_error_on_null) {
-  ipanonymizer anonymizer;
-  ipanon_errno err = ipanon_init(&anonymizer);
-  assert(err == IPANON_OK);
+Ensure(ppipaa, anonymize_ipv6_returns_error_on_null) {
+  ppipaaymizer anonymizer;
+  ppipaa_errno err = ppipaa_init(&anonymizer);
+  assert(err == PPIPAA_OK);
 
   err = anonymizer.anonymize_ipv6(NULL, 14, &raw6addr, &anon6addr);
-  assert_that(err, is_equal_to(IPANON_ERROR_NULL));
+  assert_that(err, is_equal_to(PPIPAA_ERROR_NULL));
 }
 
 
-Ensure(ipanon_tests, anonymize_ipv6_returns_error_on_bad_prefix) {
+Ensure(ppipaa, anonymize_ipv6_returns_error_on_bad_prefix) {
   // Strategy: test negative and too many prefix
-  ipanonymizer anonymizer;
-  ipanon_errno err = ipanon_init(&anonymizer);
-  assert(err == IPANON_OK);
+  ppipaaymizer anonymizer;
+  ppipaa_errno err = ppipaa_init(&anonymizer);
+  assert(err == PPIPAA_OK);
 
   int rc = inet_pton(AF_INET6, ipv6addr, &raw6addr);
   assert(rc == 1);
 
   err = anonymizer.anonymize_ipv6(&anonymizer, 129, &raw6addr, &anon6addr);
-  assert_that(err, is_equal_to(IPANON_ERROR_ANON_PREFIX));
+  assert_that(err, is_equal_to(PPIPAA_ERROR_ANON_PREFIX));
 }
 
 
-Ensure(ipanon_tests, anonymize_ipv6_returns_ok_on_good_prefix) {
+Ensure(ppipaa, anonymize_ipv6_returns_ok_on_good_prefix) {
   // Strategy: cycle through a set of prefixes, validating that anonymized
   // address is valid.
-  ipanonymizer anonymizer;
-  ipanon_errno err = ipanon_init(&anonymizer);
-  assert(err == IPANON_OK);
+  ppipaaymizer anonymizer;
+  ppipaa_errno err = ppipaa_init(&anonymizer);
+  assert(err == PPIPAA_OK);
 
   // Use predictable values for key and pad
   memcpy(anonymizer.private.key, state,
@@ -696,16 +696,16 @@ Ensure(ipanon_tests, anonymize_ipv6_returns_ok_on_good_prefix) {
 
   for (unsigned int prefix = 0; prefix <= 8 * sizeof(uint128_t); ) {
     err = anonymizer.anonymize_ipv6(&anonymizer, prefix, &raw6addr, &anon6addr);
-    assert_that(err, is_equal_to(IPANON_OK));
+    assert_that(err, is_equal_to(PPIPAA_OK));
     assert_that(valid_ipv6_anon(prefix, &raw6addr, &anon6addr), is_true);
     prefix += 1;
   }
 }
 
-Ensure(ipanon_tests, anonymize_ipv6_works_with_same_buffer_in_and_out) {
-  ipanonymizer anonymizer;
-  ipanon_errno err = ipanon_init(&anonymizer);
-  assert(err == IPANON_OK);
+Ensure(ppipaa, anonymize_ipv6_works_with_same_buffer_in_and_out) {
+  ppipaaymizer anonymizer;
+  ppipaa_errno err = ppipaa_init(&anonymizer);
+  assert(err == PPIPAA_OK);
 
   // Use predictable values for key and pad
   memcpy(anonymizer.private.key, state,
@@ -717,12 +717,12 @@ Ensure(ipanon_tests, anonymize_ipv6_works_with_same_buffer_in_and_out) {
 
   for (unsigned int prefix = 0; prefix <= 8 * sizeof(uint128_t); ++prefix) {
     err = anonymizer.anonymize_ipv6(&anonymizer, prefix, &raw6addr, &anon6addr);
-    assert(err == IPANON_OK);
+    assert(err == PPIPAA_OK);
 
     // Use temporary address for input and output buffers
     struct in6_addr addr = raw6addr;
     err = anonymizer.anonymize_ipv6(&anonymizer, prefix, &addr, &addr);
-    assert(err == IPANON_OK);
+    assert(err == PPIPAA_OK);
 
     // Verify that using two buffers or reusing one buffer makes no difference
     uint128_t anon_separate_buffers = *((uint128_t *) anon6addr.s6_addr);
@@ -731,39 +731,43 @@ Ensure(ipanon_tests, anonymize_ipv6_works_with_same_buffer_in_and_out) {
   }
 }
 
-//-------------------------------------------------------------------------------
+//------------------------------------------------------------------------------
 
-TestSuite *ipanon_tests() {
+// abbreviate macro name so lines stay under 80 characters
+#define atwc(suite, context, test) \
+  add_test_with_context(suite, context, test)
+
+TestSuite *ppipaa() {
     TestSuite *suite = create_test_suite();
 
-    add_test_with_context(suite, ipanon_tests, init_returns_error_on_null);
-    add_test_with_context(suite, ipanon_tests, init_returns_ok_with_stack_allocation);
-    add_test_with_context(suite, ipanon_tests, init_returns_ok_with_heap_allocation);
-    add_test_with_context(suite, ipanon_tests, init_initializes_private);
+    atwc(suite, ppipaa, init_returns_error_on_null);
+    atwc(suite, ppipaa, init_returns_ok_with_stack_allocation);
+    atwc(suite, ppipaa, init_returns_ok_with_heap_allocation);
+    atwc(suite, ppipaa, init_initializes_private);
 
-    add_test_with_context(suite, ipanon_tests, deinit_returns_error_on_null);
-    add_test_with_context(suite, ipanon_tests, deinit_returns_ok_on_nonnull);
-    add_test_with_context(suite, ipanon_tests, deinit_zeros_state);
+    atwc(suite, ppipaa, deinit_returns_error_on_null);
+    atwc(suite, ppipaa, deinit_returns_ok_on_nonnull);
+    atwc(suite, ppipaa, deinit_zeros_state);
 
-    add_test_with_context(suite, ipanon_tests, externalize_returns_error_on_null);
-    add_test_with_context(suite, ipanon_tests, externalize_saves_plaintext_state);
-    add_test_with_context(suite, ipanon_tests, externalize_saves_encrypted_state);
-    add_test_with_context(suite, ipanon_tests, internalize_returns_error_on_null);
-    add_test_with_context(suite, ipanon_tests, internalize_restores_plaintext_state);
-    add_test_with_context(suite, ipanon_tests, internalize_restores_encrypted_state);
-    add_test_with_context(suite, ipanon_tests, internalize_restores_encrypted_state_bad_pass);
-    add_test_with_context(suite, ipanon_tests, externalize_internalize_roundtrip_plaintext);
-    add_test_with_context(suite, ipanon_tests, externalize_internalize_roundtrip_encrypted);
+    atwc(suite, ppipaa, externalize_returns_error_on_null);
+    atwc(suite, ppipaa, externalize_saves_plaintext_state);
+    atwc(suite, ppipaa, externalize_saves_encrypted_state);
+    atwc(suite, ppipaa, internalize_returns_error_on_null);
+    atwc(suite, ppipaa, internalize_restores_plaintext_state);
+    atwc(suite, ppipaa, internalize_restores_encrypted_state);
+    atwc(suite, ppipaa, internalize_restores_encrypted_state_bad_pass);
+    atwc(suite, ppipaa, externalize_internalize_roundtrip_plaintext);
+    atwc(suite, ppipaa, externalize_internalize_roundtrip_encrypted);
 
-    add_test_with_context(suite, ipanon_tests, anonymize_ipv4_returns_error_on_null);
-    add_test_with_context(suite, ipanon_tests, anonymize_ipv4_returns_error_on_bad_prefix);
-    add_test_with_context(suite, ipanon_tests, anonymize_ipv4_returns_ok_on_good_prefix);
-    add_test_with_context(suite, ipanon_tests, anonymize_ipv4_works_with_same_buffer_in_and_out);
+    atwc(suite, ppipaa, anonymize_ipv4_returns_error_on_null);
+    atwc(suite, ppipaa, anonymize_ipv4_returns_error_on_bad_prefix);
+    atwc(suite, ppipaa, anonymize_ipv4_returns_ok_on_good_prefix);
+    atwc(suite, ppipaa, anonymize_ipv4_works_with_same_buffer_in_and_out);
 
-    add_test_with_context(suite, ipanon_tests, anonymize_ipv6_returns_error_on_null);
-    add_test_with_context(suite, ipanon_tests, anonymize_ipv6_returns_error_on_bad_prefix);
-    add_test_with_context(suite, ipanon_tests, anonymize_ipv6_returns_ok_on_good_prefix);
-    add_test_with_context(suite, ipanon_tests, anonymize_ipv6_works_with_same_buffer_in_and_out);
+    atwc(suite, ppipaa, anonymize_ipv6_returns_error_on_null);
+    atwc(suite, ppipaa, anonymize_ipv6_returns_error_on_bad_prefix);
+    atwc(suite, ppipaa, anonymize_ipv6_returns_ok_on_good_prefix);
+    atwc(suite, ppipaa, anonymize_ipv6_works_with_same_buffer_in_and_out);
 
     return suite;
 }

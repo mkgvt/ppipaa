@@ -1,5 +1,5 @@
 /*
--- The ipanon IP address anonymization library
+-- The ppipaa IP address anonymization library
 --
 -- Performs full or partial anonymization of IP addresses using the CryptopAN
 -- algorithm using modern cryptographic primitives from libsodium which are
@@ -7,26 +7,26 @@
 --
 -- Copyright (C) 2020, Mark Gardner <mkg@vt.edu>.
 --
--- This file is part of ipanon.
+-- This file is part of ppipaa.
 --
--- ipanon is free software: you can redistribute it and/or modify it under the
+-- ppipaa is free software: you can redistribute it and/or modify it under the
 -- terms of the GNU Lesser General Public License as published by the Free
 -- Software Foundation, either version 3 of the License, or (at your option)
 -- any later version.
 --
--- ipanon is distributed in the hope that it will be useful, but WITHOUT ANY
+-- ppipaa is distributed in the hope that it will be useful, but WITHOUT ANY
 -- WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
 -- FOR A PARTICULAR PURPOSE. See the GNU Lesser General Public License for
 -- more details.
 --
 -- You should have received a copy of the GNU Lesser General Public License
--- along with ipanon. If not, see <https://www.gnu.org/licenses/>.
+-- along with ppipaa. If not, see <https://www.gnu.org/licenses/>.
 */
 #include <assert.h>
 #include <stdio.h>
 #include <string.h>
 
-#include "ipanon.h"
+#include "ppipaa.h"
 #include "uint128.h"
 
 // Length of externalized data
@@ -38,7 +38,7 @@
 /*
 -- Anonymize the IPv4 address.
 --
--- Returns IPANON_OK or IPANON_ERROR_ANON_xxxx.
+-- Returns PPIPAA_OK or PPIPAA_ERROR_ANON_xxxx.
 --
 -- NOTE:
 --
@@ -51,7 +51,7 @@
 -- - the input and output address buffers can be the same for
 --   conversion in place.
 */
-ipanon_errno ipanon_anonymize_ipv4(ipanonymizer *anonymizer,
+ppipaa_errno ppipaa_anonymize_ipv4(ppipaaymizer *anonymizer,
                                    unsigned int prefix,
                                    struct in_addr *ipaddr,
                                    struct in_addr *anonaddr) {
@@ -61,13 +61,13 @@ ipanon_errno ipanon_anonymize_ipv4(ipanonymizer *anonymizer,
   // doing the anonymization eliminates a potential side-channel attack.
 
   if (anonymizer == NULL) {
-    return IPANON_ERROR_NULL;
+    return PPIPAA_ERROR_NULL;
   }
   if (prefix > 8 * sizeof(uint32_t)) {
-    return IPANON_ERROR_ANON_PREFIX;
+    return PPIPAA_ERROR_ANON_PREFIX;
   }
   if (ipaddr == NULL || anonaddr == NULL) {
-    return IPANON_ERROR_ANON_ADDR_NULL;
+    return PPIPAA_ERROR_ANON_ADDR_NULL;
   }
 
   // Prefix-preserving anonymization is of the form:
@@ -94,9 +94,11 @@ ipanon_errno ipanon_anonymize_ipv4(ipanonymizer *anonymizer,
     uint32_t tohash = (ip & upper) | (pad & lower);
 
     unsigned char hash[crypto_generichash_BYTES];
-    if (crypto_generichash(hash, sizeof(hash), (unsigned char *) &tohash, sizeof(tohash),
-                           anonymizer->private.key, sizeof(anonymizer->private.key)) != 0) {
-      return IPANON_ERROR_ANON_PRF_FAIL;
+    if (crypto_generichash(hash,sizeof(hash),
+                           (unsigned char *) &tohash, sizeof(tohash),
+                           anonymizer->private.key,
+                           sizeof(anonymizer->private.key)) != 0) {
+      return PPIPAA_ERROR_ANON_PRF_FAIL;
     }
     uint32_t bit = hash[0] & ((uint8_t) 1);
     accum |= bit << shift;
@@ -112,14 +114,14 @@ ipanon_errno ipanon_anonymize_ipv4(ipanonymizer *anonymizer,
   uint32_t addr = (ip & upper) | (accum & lower);
   anonaddr->s_addr = htonl(addr);
 
-  return IPANON_OK;
+  return PPIPAA_OK;
 }
 
 
 /*
 -- Anonymize the IPv6 address.
 --
--- Returns IPANON_OK or IPANON_ERROR_ANON_xxxx.
+-- Returns PPIPAA_OK or PPIPAA_ERROR_ANON_xxxx.
 --
 -- NOTE:
 --
@@ -132,7 +134,7 @@ ipanon_errno ipanon_anonymize_ipv4(ipanonymizer *anonymizer,
 -- - the input and output address buffers can be the same for
 --   conversion in place.
 */
-ipanon_errno ipanon_anonymize_ipv6(ipanonymizer *anonymizer,
+ppipaa_errno ppipaa_anonymize_ipv6(ppipaaymizer *anonymizer,
                                    unsigned int prefix,
                                    struct in6_addr *ipaddr,
                                    struct in6_addr *anonaddr) {
@@ -141,13 +143,13 @@ ipanon_errno ipanon_anonymize_ipv6(ipanonymizer *anonymizer,
   // nature of anonymization while allowing partial anonymization.
 
   if (anonymizer == NULL) {
-    return IPANON_ERROR_NULL;
+    return PPIPAA_ERROR_NULL;
   }
   if (prefix > 8 * sizeof(uint128_t)) {
-    return IPANON_ERROR_ANON_PREFIX;
+    return PPIPAA_ERROR_ANON_PREFIX;
   }
   if (ipaddr == NULL || anonaddr == NULL) {
-    return IPANON_ERROR_ANON_ADDR_NULL;
+    return PPIPAA_ERROR_ANON_ADDR_NULL;
   }
 
   // Prefix-preserving anonymization is of the form:
@@ -178,9 +180,11 @@ ipanon_errno ipanon_anonymize_ipv6(ipanonymizer *anonymizer,
     uint128_t tohash = (ip & upper) | (pad & lower);
 
     unsigned char hash[crypto_generichash_BYTES];
-    if (crypto_generichash(hash, sizeof(hash), (unsigned char *) &tohash, sizeof(tohash),
-                           anonymizer->private.key, sizeof(anonymizer->private.key)) != 0) {
-      return IPANON_ERROR_ANON_PRF_FAIL;
+    if (crypto_generichash(hash, sizeof(hash),
+                           (unsigned char *) &tohash, sizeof(tohash),
+                           anonymizer->private.key,
+                           sizeof(anonymizer->private.key)) != 0) {
+      return PPIPAA_ERROR_ANON_PRF_FAIL;
     }
     uint128_t bit = hash[0] & ((uint8_t) 1);
     accum |= bit << shift;
@@ -195,7 +199,7 @@ ipanon_errno ipanon_anonymize_ipv6(ipanonymizer *anonymizer,
   uint128_t addr = (ip & upper) | (accum & lower);
   *((uint128_t *) anonaddr->s6_addr) = be128toh(addr);
 
-  return IPANON_OK;
+  return PPIPAA_OK;
 }
 
 
@@ -204,7 +208,7 @@ ipanon_errno ipanon_anonymize_ipv6(ipanonymizer *anonymizer,
 --
 -- Useful in allocating buffer space for externalization;
 */
-size_t ipanon_saved_state_size(void) {
+size_t ppipaa_saved_state_size(void) {
   return crypto_pwhash_SALTBYTES +
          crypto_secretbox_NONCEBYTES +
          CIPHERTEXT_LEN;
@@ -218,25 +222,25 @@ size_t ipanon_saved_state_size(void) {
 -- IP addresses consistently. The externalized state is encrypted with a key
 -- to protect confidentiality and integrity.
 --
--- Returns IPANON_OK or IPANON_ERROR_EXTERNALIZE.
+-- Returns PPIPAA_OK or PPIPAA_ERROR_EXTERNALIZE.
 --
 -- Note: only bytes are written; all other file management is the caller's
 -- responsibility.
 */
-static ipanon_errno ipanon_externalize_plaintext(ipanonymizer *anonymizer,
+static ppipaa_errno ppipaa_externalize_plaintext(ppipaaymizer *anonymizer,
                                                  FILE *out) {
   // Sanity check
   if (anonymizer == NULL) {
-    return IPANON_ERROR_NULL;
+    return PPIPAA_ERROR_NULL;
   }
 
   // Write out state.
   int cnt = fwrite(&anonymizer->private, sizeof(anonymizer->private), 1, out);
   if (cnt != 1) {
-    return IPANON_ERROR_EXTERN;
+    return PPIPAA_ERROR_EXTERN;
   }
 
-  return IPANON_OK;
+  return PPIPAA_OK;
 }
 
 
@@ -247,17 +251,17 @@ static ipanon_errno ipanon_externalize_plaintext(ipanonymizer *anonymizer,
 -- IP addresses consistently. The externalized state is encrypted with a key
 -- to protect confidentiality and integrity.
 --
--- Returns IPANON_OK or IPANON_ERROR_EXTERNALIZE.
+-- Returns PPIPAA_OK or PPIPAA_ERROR_EXTERNALIZE.
 --
 -- Note: only bytes are written; all other file management is the caller's
 -- responsibility.
 */
-static ipanon_errno ipanon_externalize_encrypted(ipanonymizer *anonymizer,
+static ppipaa_errno ppipaa_externalize_encrypted(ppipaaymizer *anonymizer,
                                                  FILE *out,
                                                  char *key, int keylen) {
   // Sanity check
   if (anonymizer == NULL) {
-    return IPANON_ERROR_NULL;
+    return PPIPAA_ERROR_NULL;
   }
 
   // Prepare salt
@@ -275,7 +279,7 @@ static ipanon_errno ipanon_externalize_encrypted(ipanonymizer *anonymizer,
                     crypto_pwhash_MEMLIMIT_INTERACTIVE,
                     crypto_pwhash_ALG_DEFAULT) != 0) {
     // Typically: out of memory
-    return IPANON_ERROR_EXTERN;
+    return PPIPAA_ERROR_EXTERN;
   }
 
   // Prepare the nonce
@@ -291,31 +295,31 @@ static ipanon_errno ipanon_externalize_encrypted(ipanonymizer *anonymizer,
                             sizeof(anonymizer->private),
                             nonce, realkey) != 0) {
     // Encryption failed
-    return IPANON_ERROR_EXTERN;
+    return PPIPAA_ERROR_EXTERN;
   }
 
   // Write out salt.
   int cnt = fwrite(salt, sizeof(salt), 1, out);
   if (cnt != 1) {
-    return IPANON_ERROR_EXTERN;
+    return PPIPAA_ERROR_EXTERN;
   }
 
   // Write out nonce.
   cnt = fwrite(nonce, sizeof(nonce), 1, out);
   if (cnt != 1) {
-    return IPANON_ERROR_EXTERN;
+    return PPIPAA_ERROR_EXTERN;
   }
 
   // Write out encrypted state.
   cnt = fwrite(ciphertext, sizeof(ciphertext), 1, out);
   if (cnt != 1) {
-    return IPANON_ERROR_EXTERN;
+    return PPIPAA_ERROR_EXTERN;
   }
   if (fflush(out) != 0) {
-    return IPANON_ERROR_EXTERN;
+    return PPIPAA_ERROR_EXTERN;
   }
 
-  return IPANON_OK;
+  return PPIPAA_OK;
 }
 
 
@@ -326,17 +330,17 @@ static ipanon_errno ipanon_externalize_encrypted(ipanonymizer *anonymizer,
 -- IP addresses consistently. The externalized state is encrypted with a key
 -- to protect confidentiality and integrity.
 --
--- Returns IPANON_OK or IPANON_ERROR_EXTERNALIZE.
+-- Returns PPIPAA_OK or PPIPAA_ERROR_EXTERNALIZE.
 --
 -- Note: only bytes are written; all other file management is the caller's
 -- responsibility.
 */
-static ipanon_errno ipanon_externalize(ipanonymizer *anonymizer, FILE *out,
+static ppipaa_errno ppipaa_externalize(ppipaaymizer *anonymizer, FILE *out,
                                        char *key, int keylen) {
   if (key == NULL) {
-    return ipanon_externalize_plaintext(anonymizer, out);
+    return ppipaa_externalize_plaintext(anonymizer, out);
   } else {
-    return ipanon_externalize_encrypted(anonymizer, out, key, keylen);
+    return ppipaa_externalize_encrypted(anonymizer, out, key, keylen);
   }
 }
 
@@ -348,25 +352,25 @@ static ipanon_errno ipanon_externalize(ipanonymizer *anonymizer, FILE *out,
 -- addresses consistently. The same encryption key used during
 -- externalization must be used.
 --
--- Returns IPANON_OK or IPANON_ERROR_INTERNALIZE.
+-- Returns PPIPAA_OK or PPIPAA_ERROR_INTERNALIZE.
 --
 -- Note: only bytes are read; all other file management is the caller's
 -- responsibility.
 */
-static ipanon_errno ipanon_internalize_plaintext(ipanonymizer *anonymizer,
+static ppipaa_errno ppipaa_internalize_plaintext(ppipaaymizer *anonymizer,
                                                  FILE *in) {
   // Sanity check
   if (anonymizer == NULL) {
-    return IPANON_ERROR_NULL;
+    return PPIPAA_ERROR_NULL;
   }
 
   // Read in state.
   int cnt = fread(&anonymizer->private, sizeof(anonymizer->private), 1, in);
   if (cnt != 1) {
-    return IPANON_ERROR_INTERN;
+    return PPIPAA_ERROR_INTERN;
   }
 
-  return IPANON_OK;
+  return PPIPAA_OK;
 }
 
 
@@ -377,38 +381,38 @@ static ipanon_errno ipanon_internalize_plaintext(ipanonymizer *anonymizer,
 -- addresses consistently. The same encryption key used during
 -- externalization must be used.
 --
--- Returns IPANON_OK or IPANON_ERROR_INTERNALIZE.
+-- Returns PPIPAA_OK or PPIPAA_ERROR_INTERNALIZE.
 --
 -- Note: only bytes are read; all other file management is the caller's
 -- responsibility.
 */
-static ipanon_errno ipanon_internalize_encrypted(ipanonymizer *anonymizer,
+static ppipaa_errno ppipaa_internalize_encrypted(ppipaaymizer *anonymizer,
                                                  FILE *in,
                                                  char *key, int keylen) {
   // Sanity check
   if (anonymizer == NULL) {
-    return IPANON_ERROR_NULL;
+    return PPIPAA_ERROR_NULL;
   }
 
   // Read in salt.
   unsigned char salt[crypto_pwhash_SALTBYTES];
   int cnt = fread(salt, sizeof(salt), 1, in);
   if (cnt != 1) {
-    return IPANON_ERROR_INTERN;
+    return PPIPAA_ERROR_INTERN;
   }
 
   // Read in nonce.
   unsigned char nonce[crypto_secretbox_NONCEBYTES];
   cnt = fread(nonce, sizeof(nonce), 1, in);
   if (cnt != 1) {
-    return IPANON_ERROR_INTERN;
+    return PPIPAA_ERROR_INTERN;
   }
 
   // Read in encrypted state.
   unsigned char ciphertext[CIPHERTEXT_LEN];
   cnt = fread(ciphertext, sizeof(ciphertext), 1, in);
   if (cnt != 1) {
-    return IPANON_ERROR_INTERN;
+    return PPIPAA_ERROR_INTERN;
   }
 
   // Prepare the key.
@@ -422,7 +426,7 @@ static ipanon_errno ipanon_internalize_encrypted(ipanonymizer *anonymizer,
                     crypto_pwhash_MEMLIMIT_INTERACTIVE,
                     crypto_pwhash_ALG_DEFAULT) != 0) {
     // Typically: out of memory
-    return IPANON_ERROR_EXTERN;
+    return PPIPAA_ERROR_EXTERN;
   }
 
   // Decrypt the internal state.
@@ -432,10 +436,10 @@ static ipanon_errno ipanon_internalize_encrypted(ipanonymizer *anonymizer,
                                  ciphertext, CIPHERTEXT_LEN,
                                  nonce, realkey) != 0) {
     // Encryption failed
-    return IPANON_ERROR_INTERN;
+    return PPIPAA_ERROR_INTERN;
   }
 
-  return IPANON_OK;
+  return PPIPAA_OK;
 }
 
 
@@ -446,17 +450,17 @@ static ipanon_errno ipanon_internalize_encrypted(ipanonymizer *anonymizer,
 -- addresses consistently. The same encryption key used during
 -- externalization must be used.
 --
--- Returns IPANON_OK or IPANON_ERROR_INTERNALIZE.
+-- Returns PPIPAA_OK or PPIPAA_ERROR_INTERNALIZE.
 --
 -- Note: only bytes are read; all other file management is the caller's
 -- responsibility.
 */
-static ipanon_errno ipanon_internalize(ipanonymizer *anonymizer,
+static ppipaa_errno ppipaa_internalize(ppipaaymizer *anonymizer,
                                        FILE *in, char *key, int keylen) {
   if (key == NULL) {
-    return ipanon_internalize_plaintext(anonymizer, in);
+    return ppipaa_internalize_plaintext(anonymizer, in);
   } else {
-    return ipanon_internalize_encrypted(anonymizer, in, key, keylen);
+    return ppipaa_internalize_encrypted(anonymizer, in, key, keylen);
   }
 }
 
@@ -464,51 +468,51 @@ static ipanon_errno ipanon_internalize(ipanonymizer *anonymizer,
 /*
 --  De-initialize the anonymizer.
 --
--- Returns IPANON_OK or IPANON_ERROR_DEINIT.
+-- Returns PPIPAA_OK or PPIPAA_ERROR_DEINIT.
 --
 -- NOTE: storage can be freed or reused after successful deinit.
 */
-static ipanon_errno ipanon_deinit(ipanonymizer *anonymizer) {
+static ppipaa_errno ppipaa_deinit(ppipaaymizer *anonymizer) {
   // Sanity check
   if (anonymizer == NULL) {
-    return IPANON_ERROR_NULL;
+    return PPIPAA_ERROR_NULL;
   }
 
   // Nothing really needed but clear the key for security.
   memset(anonymizer->private.key, 0, sizeof(anonymizer->private.key));
   memset(anonymizer->private.pad, 0, sizeof(anonymizer->private.pad));
 
-  return IPANON_OK;
+  return PPIPAA_OK;
 }
 
 
 /*
 -- Initialize the anonymizer.
 --
--- Returns IPANON_OK or IPANON_ERROR_INIT.
+-- Returns PPIPAA_OK or PPIPAA_ERROR_INIT.
 --
 -- NOTE: caller is responsible for managing the storage on the stack or heap.
 */
-ipanon_errno ipanon_init(ipanonymizer *anonymizer) {
+ppipaa_errno ppipaa_init(ppipaaymizer *anonymizer) {
   // Sanity check
   if (anonymizer == NULL) {
-    return IPANON_ERROR_NULL;
+    return PPIPAA_ERROR_NULL;
   }
 
   // Note: sodium_init is re-entrant
   if (sodium_init() < 0) {
-    return IPANON_ERROR_INIT;
+    return PPIPAA_ERROR_INIT;
   }
   randombytes_buf(anonymizer->private.key, sizeof(anonymizer->private.key));
   randombytes_buf(anonymizer->private.pad, sizeof(anonymizer->private.pad));
 
   // Set up "methods"
-  anonymizer->init = ipanon_init;
-  anonymizer->deinit = ipanon_deinit;
-  anonymizer->externalize = ipanon_externalize;
-  anonymizer->internalize = ipanon_internalize;
-  anonymizer->anonymize_ipv4 = ipanon_anonymize_ipv4;
-  anonymizer->anonymize_ipv6 = ipanon_anonymize_ipv6;
+  anonymizer->init = ppipaa_init;
+  anonymizer->deinit = ppipaa_deinit;
+  anonymizer->externalize = ppipaa_externalize;
+  anonymizer->internalize = ppipaa_internalize;
+  anonymizer->anonymize_ipv4 = ppipaa_anonymize_ipv4;
+  anonymizer->anonymize_ipv6 = ppipaa_anonymize_ipv6;
 
-  return IPANON_OK;
+  return PPIPAA_OK;
 }

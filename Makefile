@@ -1,21 +1,21 @@
-## The ipanon IP address anonymization library
+## The ppipaa IP address anonymization library
 ##
 ## Copyright (C) 2020, Mark Gardner <mkg@vt.edu>.
 ##
-## This file is part of ipanon.
+## This file is part of ppipaa.
 ##
-## ipanon is free software: you can redistribute it and/or modify it under the
+## ppipaa is free software: you can redistribute it and/or modify it under the
 ## terms of the GNU Lesser General Public License as published by the Free
 ## Software Foundation, either version 3 of the License, or (at your option)
 ## any later version.
 ##
-## ipanon is distributed in the hope that it will be useful, but WITHOUT ANY
+## ppipaa is distributed in the hope that it will be useful, but WITHOUT ANY
 ## WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
 ## FOR A PARTICULAR PURPOSE. See the GNU Lesser General Public License for
 ## more details.
 ##
 ## You should have received a copy of the GNU Lesser General Public License
-## along with ipanon. If not, see <https://www.gnu.org/licenses/>.
+## along with ppipaa. If not, see <https://www.gnu.org/licenses/>.
 
 U128LIB = ~/src/uint128
 
@@ -24,7 +24,7 @@ CFLAGS  = -fPIC -I . -I $(U128LIB) -Wall -Wpedantic -Wextra
 LDFLAGS = -lcgreen -lsodium
 DFLAGS  = -I $(U128LIB) -MM -MF
 
-SRC     = ipanon.c
+SRC     = ppipaa.c
 OBJ     = ${SRC:.c=.o}
 DEP     = ${SRC:.c=.d}
 

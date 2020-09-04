@@ -1,5 +1,5 @@
 /*
--- The ipanon IP address anonymization library
+-- The ppipaa IP address anonymization library
 --
 -- Performs full or partial anonymization of IP addresses using the CryptopAN
 -- algorithm using modern cryptographic primitives from libsodium which are
@@ -7,20 +7,20 @@
 --
 -- Copyright (C) 2020, Mark Gardner <mkg@vt.edu>.
 --
--- This file is part of ipanon.
+-- This file is part of ppipaa.
 --
--- ipanon is free software: you can redistribute it and/or modify it under the
+-- ppipaa is free software: you can redistribute it and/or modify it under the
 -- terms of the GNU Lesser General Public License as published by the Free
 -- Software Foundation, either version 3 of the License, or (at your option)
 -- any later version.
 --
--- ipanon is distributed in the hope that it will be useful, but WITHOUT ANY
+-- ppipaa is distributed in the hope that it will be useful, but WITHOUT ANY
 -- WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
 -- FOR A PARTICULAR PURPOSE. See the GNU Lesser General Public License for
 -- more details.
 --
 -- You should have received a copy of the GNU Lesser General Public License
--- along with ipanon. If not, see <https://www.gnu.org/licenses/>.
+-- along with ppipaa. If not, see <https://www.gnu.org/licenses/>.
 */
 #ifndef __IPCRYPTO_H
 #define __IPCRYPTO_H
@@ -30,41 +30,41 @@
 
 
 typedef enum {
-  IPANON_OK,                    // No error
-  IPANON_ERROR_NULL,            // Anonymizer is NULL
-  IPANON_ERROR_INIT,            // Initialization failed
-  IPANON_ERROR_DEINIT,          // Deinitialization failed
-  IPANON_ERROR_EXTERN,          // Externalization failed
-  IPANON_ERROR_INTERN,          // Internalization failed
-  IPANON_ERROR_ANON_PREFIX,     // Invalid prefix bits in anonymize call
-  IPANON_ERROR_ANON_ADDR_NULL,  // Plaintext or anonymized addr ptr is NULL
-  IPANON_ERROR_ANON_PRF_FAIL,   // Pseudo-random function failed
-  IPANON_END_OF_ERRORS,         // indicates end of errors (must be last)
-} ipanon_errno;
+  PPIPAA_OK,                    // No error
+  PPIPAA_ERROR_NULL,            // Anonymizer is NULL
+  PPIPAA_ERROR_INIT,            // Initialization failed
+  PPIPAA_ERROR_DEINIT,          // Deinitialization failed
+  PPIPAA_ERROR_EXTERN,          // Externalization failed
+  PPIPAA_ERROR_INTERN,          // Internalization failed
+  PPIPAA_ERROR_ANON_PREFIX,     // Invalid prefix bits in anonymize call
+  PPIPAA_ERROR_ANON_ADDR_NULL,  // Plaintext or anonymized addr ptr is NULL
+  PPIPAA_ERROR_ANON_PRF_FAIL,   // Pseudo-random function failed
+  PPIPAA_END_OF_ERRORS,         // indicates end of errors (must be last)
+} ppipaa_errno;
 
 
-typedef struct ipanon_state ipanonymizer;
+typedef struct ppipaa_state ppipaaymizer;
 
-struct ipanon_state {
+struct ppipaa_state {
   // Public interface
 
   /*
   -- (Re)-initialize the anonymizer.
   --
-  -- Returns IPANON_OK or IPANON_ERROR_INIT.
+  -- Returns PPIPAA_OK or PPIPAA_ERROR_INIT.
   --
   -- NOTE: caller is responsible for managing the storage on the stack or heap.
   */
-  ipanon_errno (*init)(ipanonymizer *anonymizer);
+  ppipaa_errno (*init)(ppipaaymizer *anonymizer);
 
   /*
   -- De-initialize the anonymizer.
   --
-  -- Returns IPANON_OK or IPANON_ERROR_DEINIT.
+  -- Returns PPIPAA_OK or PPIPAA_ERROR_DEINIT.
   --
   -- NOTE: storage can be freed or reused after successful deinit.
   */
-  ipanon_errno (*deinit)(ipanonymizer *anonymizer);
+  ppipaa_errno (*deinit)(ppipaaymizer *anonymizer);
 
   /*
   -- Externalize the anonymizer state.
@@ -73,13 +73,13 @@ struct ipanon_state {
   -- IP addresses consistently. The externalized state is encrypted with a key
   -- to protect confidentiality and integrity.
   --
-  -- Returns IPANON_OK or IPANON_ERROR_EXTERNALIZE.
+  -- Returns PPIPAA_OK or PPIPAA_ERROR_EXTERNALIZE.
   --
   -- Note: only bytes are written; all other file management is the caller's
   --       responsibility.
 
   */
-  ipanon_errno (*externalize)(ipanonymizer *anonymizer, FILE *out,
+  ppipaa_errno (*externalize)(ppipaaymizer *anonymizer, FILE *out,
                               char *key, int keylen);
 
   /*
@@ -89,19 +89,19 @@ struct ipanon_state {
   -- addresses consistently. The same encryption key used during
   -- externalization must be used.
   --
-  -- Returns IPANON_OK or IPANON_ERROR_INTERNALIZE.
+  -- Returns PPIPAA_OK or PPIPAA_ERROR_INTERNALIZE.
   --
   -- Note: only bytes are read; all other file management is the caller's
   --       responsibility.
   */
-  ipanon_errno (*internalize)(ipanonymizer *anonymizer, FILE *in,
+  ppipaa_errno (*internalize)(ppipaaymizer *anonymizer, FILE *in,
                               char *key, int keylen);
 
 
   /*
   -- Anonymize the IPv4 address.
   --
-  -- Returns IPANON_OK or IPANON_ERROR_ANON_xxxx.
+  -- Returns PPIPAA_OK or PPIPAA_ERROR_ANON_xxxx.
   --
   -- NOTE:
   --
@@ -114,7 +114,7 @@ struct ipanon_state {
   -- - the input and output address buffers can be the same for
   --   conversion in place.
   */
-  ipanon_errno (*anonymize_ipv4)(ipanonymizer *anonymizer,
+  ppipaa_errno (*anonymize_ipv4)(ppipaaymizer *anonymizer,
                                  unsigned int prefix,
                                  struct in_addr *ipaddr,
                                  struct in_addr *anonaddr);
@@ -122,7 +122,7 @@ struct ipanon_state {
   /*
   -- Anonymize the IPv6 address.
   --
-  -- Returns IPANON_OK or IPANON_ERROR_ANON_xxxx.
+  -- Returns PPIPAA_OK or PPIPAA_ERROR_ANON_xxxx.
   --
   -- NOTE:
   --
@@ -135,7 +135,7 @@ struct ipanon_state {
   -- - the input and output address buffers can be the same for
   --   conversion in place.
   */
-  ipanon_errno (*anonymize_ipv6)(ipanonymizer *anonymizer,
+  ppipaa_errno (*anonymize_ipv6)(ppipaaymizer *anonymizer,
                                  unsigned int prefix,
                                  struct in6_addr *ipaddr,
                                  struct in6_addr *anonaddr);
@@ -152,11 +152,11 @@ struct ipanon_state {
 /*
 -- Initialize the anonymizer.
 --
--- Returns IPANON_OK or IPANON_ERROR_INIT.
+-- Returns PPIPAA_OK or PPIPAA_ERROR_INIT.
 --
 -- NOTE: caller is responsible for managing the storage on the stack or heap.
 */
-extern ipanon_errno ipanon_init(ipanonymizer *anonymizer);
+extern ppipaa_errno ppipaa_init(ppipaaymizer *anonymizer);
 
 
 /*
@@ -164,7 +164,7 @@ extern ipanon_errno ipanon_init(ipanonymizer *anonymizer);
 --
 -- Useful in allocating buffer space for externalization and internalization;
 */
-extern size_t ipanon_saved_state_size(void);
+extern size_t ppipaa_saved_state_size(void);
 
 
 #endif // __IPCRYPTO_H
