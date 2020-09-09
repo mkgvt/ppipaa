@@ -1,0 +1,14 @@
+# Ignore Emacs droppings
+*~
+
+# Ignore compilation artifacts
+*.o
+*.a
+*.so
+
+# Ignore other stuff
+*HOLD*
+*.orig
+*.bak
+*.old
+*MADA*
