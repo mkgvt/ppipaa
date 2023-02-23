@@ -4,6 +4,8 @@ PPIPAA
 
 Prefix-Preserving IP Address Anonymization
 
+THERE ARE SERIOUS PROBLEMS WITH THIS IMPLEMENTATION. DO NOT USE!
+
 Table of Contents
 -----------------
 
